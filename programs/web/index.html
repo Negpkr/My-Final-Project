@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Negin Watering System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f4;
+      padding: 20px;
+    }
+
+    .container {
+      margin-top: 20px;
+    }
+
+    button,
+    input {
+      padding: 10px 15px;
+      margin: 10px;
+      font-size: 18px;
+    }
+
+    #output {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      text-align: left;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Negin Watering System Control Panel</h1>
+
+  <div class="container">
+    <h3>Mode Control</h3>
+    <button onclick="setMode('manual')">Switch to Manual Mode</button>
+
+    <h3>Watering System Control</h3>
+    <button onclick="toggleWatering('on')">Turn On Watering</button>
+    <button onclick="toggleWatering('off')">Turn Off Watering</button>
+    <button onclick="getWateringStatus()">Get Watering Status</button>
+
+    <h3>Plant Control and Data</h3>
+    <input type="text" id="plant" placeholder="Enter Plant Name">
+    <button onclick="getPlantData()">Get Data for Plant</button>
+    <button onclick="checkNeedsWater()">Check if Plant Needs Water</button>
+
+    <h3>Sensor Data and Filtering</h3>
+    <button onclick="getLatestData()">Get Latest Sensor Data</button>
+    <input type="datetime-local" id="startTime" placeholder="Start Timestamp">
+    <input type="datetime-local" id="endTime" placeholder="End Timestamp">
+    <button onclick="filterData()">Filter Data</button>
+
+    <h3>Watering System Intervals</h3>
+    <button onclick="getWateringIntervals()">Get Watering Intervals</button>
+  </div>
+
+  <div id="output">Results will appear here...</div>
+
+  <script>
+    async function setMode(mode) {
+      try {
+        await fetch(`http://localhost:3000/mode/${mode}`, { method: 'POST' });
+        const response = await fetch('http://localhost:3000/mode');
+        const data = await response.json();
+        alert(`Mode set to: ${data.mode}`);
+        if (mode === 'manual') window.location.href = 'manual.html';
+      } catch (error) {
+        alert('Error setting mode.');
+      }
+    }
+
+    async function toggleWatering(status) {
+      try {
+        const response = await fetch(`http://localhost:3000/pump/${status}`, { method: 'POST' });
+        const result = await response.text();
+        document.getElementById('output').innerText = result;
+      } catch (error) {
+        alert('Error toggling watering system.');
+      }
+    }
+
+    async function getWateringStatus() {
+      try {
+        const response = await fetch('http://localhost:3000/watering/status');
+        const data = await response.json();
+        const status = data.map(item => `${item.plant}: Needs Water? ${item.needsWater}`).join('\n');
+        document.getElementById('output').innerText = status;
+      } catch (error) {
+        alert('Error fetching watering status.');
+      }
+    }
+
+    async function getPlantData() {
+      const plant = document.getElementById('plant').value;
+      if (!plant) {
+        alert("Please enter a plant name.");
+        return;
+      }
+      try {
+        const response = await fetch(`http://localhost:3000/data/plant/${plant}`);
+        const data = await response.json();
+        document.getElementById('output').innerText = JSON.stringify(data, null, 2);
+      } catch (error) {
+        alert('Error fetching plant data.');
+      }
+    }
+
+    async function checkNeedsWater() {
+      const plant = document.getElementById('plant').value;
+      if (!plant) {
+        alert("Please enter a plant name.");
+        return;
+      }
+      try {
+        const response = await fetch(`http://localhost:3000/plant/${plant}/needs-water`);
+        const result = await response.text();
+        document.getElementById('output').innerText = result;
+      } catch (error) {
+        alert('Error checking plant water needs.');
+      }
+    }
+
+    async function getLatestData() {
+      try {
+        const response = await fetch('http://localhost:3000/data/latest');
+        const data = await response.json();
+        document.getElementById('output').innerText = JSON.stringify(data, null, 2);
+      } catch (error) {
+        alert('Error fetching latest sensor data.');
+      }
+    }
+
+    async function filterData() {
+      const startTime = document.getElementById('startTime').value;
+      const endTime = document.getElementById('endTime').value;
+
+      if (!startTime || !endTime) {
+        alert('Please enter both start and end timestamps.');
+        return;
+      }
+
+      const query = new URLSearchParams({
+        start: new Date(startTime).toISOString(),
+        end: new Date(endTime).toISOString(),
+      });
+
+      try {
+        const response = await fetch(`http://localhost:3000/data/filter?${query.toString()}`);
+        const data = await response.json();
+        document.getElementById('output').innerText = JSON.stringify(data, null, 2);
+      } catch (error) {
+        alert('Error filtering data.');
+      }
+    }
+
+    async function getWateringIntervals() {
+      try {
+        const response = await fetch('http://localhost:3000/watering/intervals');
+        const data = await response.json();
+        const intervals = data.map(item => `${item.plant}: ${item.interval}`).join('\n');
+        document.getElementById('output').innerText = intervals;
+      } catch (error) {
+        alert('Error fetching watering intervals.');
+      }
+    }
+  </script>
+</body>
+
+</html>
